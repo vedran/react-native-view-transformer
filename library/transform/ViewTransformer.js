@@ -21,7 +21,7 @@ export default class ViewTransformer extends React.Component {
     super(props);
     this.state = {
       //transform state
-      scale: 1,
+      scale: this.props.initialScale,
       translateX: 0,
       translateY: 0,
 
@@ -53,6 +53,7 @@ export default class ViewTransformer extends React.Component {
       })
     });
   }
+
 
   viewPortRect() {
     this._viewPortRect.set(0, 0, this.state.width, this.state.height);
@@ -88,10 +89,7 @@ export default class ViewTransformer extends React.Component {
       onResponderGrant: this.onResponderGrant.bind(this),
       onResponderRelease: this.onResponderRelease.bind(this),
       onResponderTerminate: this.onResponderRelease.bind(this),
-      onResponderTerminationRequest: (evt, gestureState) => false, //Do not allow parent view to intercept gesture
-      onResponderSingleTapConfirmed: (evt, gestureState) => {
-        this.props.onSingleTapConfirmed && this.props.onSingleTapConfirmed();
-      }
+      onResponderTerminationRequest: (evt, gestureState) => false //Do not allow parent view to intercept gesture
     });
   }
 
@@ -205,6 +203,7 @@ export default class ViewTransformer extends React.Component {
       transform.translateY = this.state.translateY + dy / this.state.scale;
     }
 
+    
     this.updateTransform(transform);
     return true;
   }
@@ -234,7 +233,7 @@ export default class ViewTransformer extends React.Component {
         pivotY = gestureState.y0 - this.state.pageY;
       }
 
-      this.performDoubleTapUp(pivotX, pivotY);
+      // this.performDoubleTapUp(pivotX, pivotY);
     } else {
       if(this.props.enableTranslate) {
         this.performFling(gestureState.vx, gestureState.vy);
@@ -254,12 +253,13 @@ export default class ViewTransformer extends React.Component {
     let startY = 0;
     let maxX, minX, maxY, minY;
     let availablePanDistance = availableTranslateSpace(this.transformedContentRect(), this.viewPortRect());
+
     if (vx > 0) {
       minX = 0;
       if (availablePanDistance.left > 0) {
         maxX = availablePanDistance.left + this.props.maxOverScrollDistance;
       } else {
-        maxX = 0;
+        maxX = 0
       }
     } else {
       maxX = 0;
@@ -375,8 +375,9 @@ export default class ViewTransformer extends React.Component {
   }
 
   animateBounce() {
+
     let curScale = this.state.scale;
-    let minScale = 1;
+    let minScale = this.props.minScale;
     let maxScale = this.props.maxScale;
     let scaleBy = 1;
     if (curScale > maxScale) {
@@ -385,13 +386,17 @@ export default class ViewTransformer extends React.Component {
       scaleBy = minScale / curScale;
     }
 
+    if(scaleBy < minScale) {
+      scaleBy = minScale
+    }
+
     let rect = transformedRect(this.transformedContentRect(), new Transform(
       scaleBy,
       0,
       0,
       {
-        x: this.viewPortRect().centerX(),
-        y: this.viewPortRect().centerY()
+        x: this.viewPortRect().centerX() + this.state.translateX,
+        y: this.viewPortRect().centerY() + this.state.translateY
       }
     ));
     rect = alignedRect(rect, this.viewPortRect());
@@ -439,6 +444,8 @@ ViewTransformer.propTypes = {
   maxOverScrollDistance: React.PropTypes.number,
 
   maxScale: React.PropTypes.number,
+  minScale: React.PropTypes.number,
+  initialScale: React.PropTypes.number,
   contentAspectRatio: React.PropTypes.number,
 
   /**
@@ -448,9 +455,7 @@ ViewTransformer.propTypes = {
 
   onViewTransformed: React.PropTypes.func,
 
-  onTransformGestureReleased: React.PropTypes.func,
-
-  onSingleTapConfirmed: React.PropTypes.func
+  onTransformGestureReleased: React.PropTypes.func
 };
 ViewTransformer.defaultProps = {
   maxOverScrollDistance: 20,
@@ -458,5 +463,7 @@ ViewTransformer.defaultProps = {
   enableTranslate: true,
   enableTransform: true,
   maxScale: 1,
-  enableResistance: false
+  enableResistance: false,
+  minScale: 1,
+  initialScale: 1
 };
